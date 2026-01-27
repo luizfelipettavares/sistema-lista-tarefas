@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Tarefa</title>
+</head>
+<body>
+    <h1>Editar Tarefa</h1>
+
+    <form action="{{ url_for('atualizar', id=tarefa.id) }}" method="post">
+        <label>
+            Nome da tarefa:
+            <input type="text" name="nome" value="{{ tarefa.nome }}" required>
+        </label>
+        <br><br>
+
+        <label>
+            Custo (R$):
+            <input type="number" name="custo" step="0.01" min="0"
+                   value="{{ tarefa.custo }}" required>
+        </label>
+        <br><br>
+
+        <label>
+            Data limite:
+            <input type="date" name="data_limite"
+                   value="{{ tarefa.data_limite }}" required>
+        </label>
+        <br><br>
+
+        <button type="submit">Salvar</button>
+        <a href="{{ url_for('index') }}">Cancelar</a>
+    </form>
+</body>
+</html>
