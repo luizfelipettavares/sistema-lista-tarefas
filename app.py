@@ -5,46 +5,36 @@ app = Flask(__name__)
 
 DATABASE = 'tarefas.db'
 
+
 def get_db_connection():
     conn = sqlite3.connect(
         DATABASE,
-        timeout=10,          # espera até 10s se o banco estiver ocupado
+        timeout=10,
         check_same_thread=False
     )
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tarefas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL UNIQUE,
-            custo REAL NOT NULL CHECK (custo >= 0),
-            data_limite TEXT NOT NULL,
-            ordem INTEGER NOT NULL UNIQUE
-        )
-    """)
+def validar_tarefa(nome, custo, data_limite):
+    if not nome or not custo or not data_limite:
+        return False
+    try:
+        return float(custo) >= 0
+    except ValueError:
+        return False
 
-    conn.commit()
-    conn.close()
 
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    tarefas = conn.execute(
-        'SELECT * FROM tarefas ORDER BY ordem'
-    ).fetchall()
+    with get_db_connection() as conn:
+        tarefas = conn.execute(
+            'SELECT * FROM tarefas ORDER BY ordem'
+        ).fetchall()
 
-    total = conn.execute(
-        'SELECT SUM(custo) FROM tarefas'
-    ).fetchone()[0]
-
-    conn.close()
-
-    total = total or 0
+        total = conn.execute(
+            'SELECT COALESCE(SUM(custo), 0) FROM tarefas'
+        ).fetchone()[0]
 
     return render_template(
         'index.html',
@@ -59,50 +49,52 @@ def incluir():
     custo = request.form['custo']
     data_limite = request.form['data_limite']
 
-    if not nome or not custo or not data_limite:
+    if not validar_tarefa(nome, custo, data_limite):
         return redirect(url_for('index'))
 
-    custo = float(custo)
-    if custo < 0:
-        return redirect(url_for('index'))
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        max_ordem = cursor.execute(
+            'SELECT MAX(ordem) FROM tarefas'
+        ).fetchone()[0]
 
-    # pega a maior ordem atual
-    cursor.execute('SELECT MAX(ordem) FROM tarefas')
-    max_ordem = cursor.fetchone()[0]
-    nova_ordem = (max_ordem or 0) + 1
+        nova_ordem = (max_ordem or 0) + 1
 
-    try:
-        cursor.execute(
-            'INSERT INTO tarefas (nome, custo, data_limite, ordem) VALUES (?, ?, ?, ?)',
-            (nome, custo, data_limite, nova_ordem)
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        # nome duplicado
-        pass
-    finally:
-        conn.close()
+        try:
+            cursor.execute(
+                '''
+                INSERT INTO tarefas (nome, custo, data_limite, ordem)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (nome, float(custo), data_limite, nova_ordem)
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass
 
     return redirect(url_for('index'))
+
 
 @app.route('/excluir/<int:id>', methods=['POST'])
 def excluir(id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM tarefas WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        conn.execute(
+            'DELETE FROM tarefas WHERE id = ?',
+            (id,)
+        )
+        conn.commit()
+
     return redirect(url_for('index'))
+
 
 @app.route('/editar/<int:id>')
 def editar(id):
-    conn = get_db_connection()
-    tarefa = conn.execute(
-        'SELECT * FROM tarefas WHERE id = ?', (id,)
-    ).fetchone()
-    conn.close()
+    with get_db_connection() as conn:
+        tarefa = conn.execute(
+            'SELECT * FROM tarefas WHERE id = ?',
+            (id,)
+        ).fetchone()
 
     return render_template('editar.html', tarefa=tarefa)
 
@@ -113,113 +105,111 @@ def atualizar(id):
     custo = request.form['custo']
     data_limite = request.form['data_limite']
 
-    if not nome or not custo or not data_limite:
+    if not validar_tarefa(nome, custo, data_limite):
         return redirect(url_for('editar', id=id))
 
-    custo = float(custo)
-    if custo < 0:
-        return redirect(url_for('editar', id=id))
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        existe = cursor.execute(
+            'SELECT id FROM tarefas WHERE nome = ? AND id != ?',
+            (nome, id)
+        ).fetchone()
 
-    # verifica duplicidade de nome (exceto a própria tarefa)
-    existe = cursor.execute(
-        'SELECT id FROM tarefas WHERE nome = ? AND id != ?',
-        (nome, id)
-    ).fetchone()
+        if existe:
+            return redirect(url_for('editar', id=id))
 
-    if existe:
-        conn.close()
-        return redirect(url_for('editar', id=id))
-
-    cursor.execute(
-        'UPDATE tarefas SET nome = ?, custo = ?, data_limite = ? WHERE id = ?',
-        (nome, custo, data_limite, id)
-    )
-
-    conn.commit()
-    conn.close()
+        cursor.execute(
+            '''
+            UPDATE tarefas
+            SET nome = ?, custo = ?, data_limite = ?
+            WHERE id = ?
+            ''',
+            (nome, float(custo), data_limite, id)
+        )
+        conn.commit()
 
     return redirect(url_for('index'))
 
+
+def trocar_ordem(cursor, id1, ordem1, id2, ordem2):
+    cursor.execute(
+        'UPDATE tarefas SET ordem = -1 WHERE id = ?',
+        (id1,)
+    )
+    cursor.execute(
+        'UPDATE tarefas SET ordem = ? WHERE id = ?',
+        (ordem1, id2)
+    )
+    cursor.execute(
+        'UPDATE tarefas SET ordem = ? WHERE id = ?',
+        (ordem2, id1)
+    )
+
+
 @app.route('/subir/<int:id>', methods=['POST'])
 def subir(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
         tarefa = cursor.execute(
             'SELECT id, ordem FROM tarefas WHERE id = ?',
             (id,)
         ).fetchone()
 
         anterior = cursor.execute(
-            'SELECT id, ordem FROM tarefas WHERE ordem < ? ORDER BY ordem DESC LIMIT 1',
+            '''
+            SELECT id, ordem FROM tarefas
+            WHERE ordem < ?
+            ORDER BY ordem DESC
+            LIMIT 1
+            ''',
             (tarefa['ordem'],)
         ).fetchone()
 
         if anterior:
-            # valor temporário para evitar conflito UNIQUE
-            cursor.execute(
-                'UPDATE tarefas SET ordem = -1 WHERE id = ?',
-                (tarefa['id'],)
-            )
-
-            cursor.execute(
-                'UPDATE tarefas SET ordem = ? WHERE id = ?',
-                (tarefa['ordem'], anterior['id'])
-            )
-
-            cursor.execute(
-                'UPDATE tarefas SET ordem = ? WHERE id = ?',
-                (anterior['ordem'], tarefa['id'])
+            trocar_ordem(
+                cursor,
+                tarefa['id'], tarefa['ordem'],
+                anterior['id'], anterior['ordem']
             )
 
         conn.commit()
-    finally:
-        conn.close()
 
     return redirect(url_for('index'))
 
+
 @app.route('/descer/<int:id>', methods=['POST'])
 def descer(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
 
-    try:
         tarefa = cursor.execute(
             'SELECT id, ordem FROM tarefas WHERE id = ?',
             (id,)
         ).fetchone()
 
         proxima = cursor.execute(
-            'SELECT id, ordem FROM tarefas WHERE ordem > ? ORDER BY ordem ASC LIMIT 1',
+            '''
+            SELECT id, ordem FROM tarefas
+            WHERE ordem > ?
+            ORDER BY ordem ASC
+            LIMIT 1
+            ''',
             (tarefa['ordem'],)
         ).fetchone()
 
         if proxima:
-            # valor temporário para evitar conflito UNIQUE
-            cursor.execute(
-                'UPDATE tarefas SET ordem = -1 WHERE id = ?',
-                (tarefa['id'],)
-            )
-
-            cursor.execute(
-                'UPDATE tarefas SET ordem = ? WHERE id = ?',
-                (tarefa['ordem'], proxima['id'])
-            )
-
-            cursor.execute(
-                'UPDATE tarefas SET ordem = ? WHERE id = ?',
-                (proxima['ordem'], tarefa['id'])
+            trocar_ordem(
+                cursor,
+                tarefa['id'], tarefa['ordem'],
+                proxima['id'], proxima['ordem']
             )
 
         conn.commit()
-    finally:
-        conn.close()
 
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run()
