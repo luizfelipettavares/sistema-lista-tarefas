@@ -3,83 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <title>Lista de Tarefas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+        }
+        .container {
+            width: 700px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form input, form button {
+            padding: 8px;
+            margin: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .acoes form {
+            display: inline;
+        }
+        .total {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
+<div class="container">
 
-    <h1>Lista de Tarefas</h1>
+<h1>📋 Lista de Tarefas</h1>
 
-    <h2>Incluir nova tarefa</h2>
+<form action="{{ url_for('incluir') }}" method="post">
+    <input type="text" name="nome" placeholder="Tarefa">
+    <input type="number" step="0.01" name="custo" placeholder="Custo">
+    <input type="date" name="data_limite">
+    <button type="submit">Adicionar</button>
+</form>
 
-    <form action="{{ url_for('incluir') }}" method="post">
-        <label>
-            Nome da tarefa:
-            <input type="text" name="nome" required>
-        </label>
-        <br><br>
+<table>
+    <tr>
+        <th>Nome</th>
+        <th>Custo</th>
+        <th>Data Limite</th>
+        <th>Ações</th>
+    </tr>
+    {% for tarefa in tarefas %}
+    <tr>
+        <td>{{ tarefa.nome }}</td>
+        <td>R$ {{ "%.2f"|format(tarefa.custo) }}</td>
+        <td>{{ tarefa.data_limite }}</td>
+        <td class="acoes">
+            <form action="{{ url_for('subir', id=tarefa.id) }}" method="post">
+                <button>⬆</button>
+            </form>
+            <form action="{{ url_for('descer', id=tarefa.id) }}" method="post">
+                <button>⬇</button>
+            </form>
+            <a href="{{ url_for('editar', id=tarefa.id) }}">Editar</a>
+            <form action="{{ url_for('excluir', id=tarefa.id) }}" method="post"
+                  onsubmit="return confirm('Deseja excluir?');">
+                <button>Excluir</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
 
-        <label>
-            Custo (R$):
-            <input type="number" name="custo" step="0.01" min="0" required>
-        </label>
-        <br><br>
+<p class="total">💰 Total: R$ {{ "%.2f"|format(total) }}</p>
 
-        <label>
-            Data limite:
-            <input type="date" name="data_limite" required>
-        </label>
-        <br><br>
-
-        <button type="submit">Incluir</button>
-    </form>
-
-    <hr>
-
-    <h2>Lista</h2>
-
-    {% if tarefas %}
-        <ul>
-            {% for tarefa in tarefas %}
-                <li style="{% if tarefa.custo >= 1000 %}background-color: yellow;{% endif %}">
-
-                    {{ tarefa.nome }} |
-                    R$ {{ "%.2f"|format(tarefa.custo) }} |
-                    {{ tarefa.data_limite }}
-
-                    <form action="{{ url_for('subir', id=tarefa.id) }}"
-                        method="post"
-                        style="display:inline;">
-                        <button type="submit">⬆️</button>
-                    </form>
-
-                    <form action="{{ url_for('descer', id=tarefa.id) }}"
-                        method="post"
-                        style="display:inline;">
-                        <button type="submit">⬇️</button>
-                    </form>
-
-
-                    |
-                    <a href="{{ url_for('editar', id=tarefa.id) }}">Editar</a>
-
-                    <form action="{{ url_for('excluir', id=tarefa.id) }}"
-                          method="post"
-                          style="display:inline;"
-                          onsubmit="return confirm('Deseja realmente excluir esta tarefa?');">
-                        <button type="submit">Excluir</button>
-                    </form>
-                </li>
-            {% endfor %}
-        </ul>
-
-        <hr>
-        <p>
-            <strong>Total dos custos:</strong>
-            R$ {{ "%.2f"|format(total) }}
-        </p>
-
-    {% else %}
-        <p>Nenhuma tarefa cadastrada.</p>
-    {% endif %}
-
+</div>
 </body>
 </html>
