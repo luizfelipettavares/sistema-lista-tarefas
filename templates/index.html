@@ -39,12 +39,26 @@
             margin-top: 15px;
             font-weight: bold;
         }
+        .mensagem {
+            color: red;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
 
 <h1>📋 Lista de Tarefas</h1>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="mensagem">
+      {% for msg in messages %}
+        <p>{{ msg }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 
 <form action="{{ url_for('incluir') }}" method="post">
     <input type="text" name="nome" placeholder="Tarefa">
@@ -60,26 +74,33 @@
         <th>Data Limite</th>
         <th>Ações</th>
     </tr>
-    {% for tarefa in tarefas %}
-    <tr>
-        <td>{{ tarefa.nome }}</td>
-        <td>R$ {{ "%.2f"|format(tarefa.custo) }}</td>
-        <td>{{ tarefa.data_limite }}</td>
-        <td class="acoes">
-            <form action="{{ url_for('subir', id=tarefa.id) }}" method="post">
-                <button>⬆</button>
-            </form>
-            <form action="{{ url_for('descer', id=tarefa.id) }}" method="post">
-                <button>⬇</button>
-            </form>
-            <a href="{{ url_for('editar', id=tarefa.id) }}">Editar</a>
-            <form action="{{ url_for('excluir', id=tarefa.id) }}" method="post"
-                  onsubmit="return confirm('Deseja excluir?');">
-                <button>Excluir</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
+
+    {% if tarefas %}
+        {% for tarefa in tarefas %}
+        <tr {% if tarefa.custo >= 1000 %} style="background-color: #f8d7da;" {% endif %}>
+            <td>{{ tarefa.nome }}</td>
+            <td>R$ {{ "%.2f"|format(tarefa.custo) }}</td>
+            <td>{{ tarefa.data_limite[8:10] }}/{{ tarefa.data_limite[5:7] }}/{{ tarefa.data_limite[0:4] }}</td>
+            <td class="acoes">
+                <form action="{{ url_for('subir', id=tarefa.id) }}" method="post">
+                    <button>⬆</button>
+                </form>
+                <form action="{{ url_for('descer', id=tarefa.id) }}" method="post">
+                    <button>⬇</button>
+                </form>
+                <a href="{{ url_for('editar', id=tarefa.id) }}">Editar</a>
+                <form action="{{ url_for('excluir', id=tarefa.id) }}" method="post"
+                      onsubmit="return confirm('Deseja excluir?');">
+                    <button>Excluir</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="4">Nenhuma tarefa cadastrada.</td>
+        </tr>
+    {% endif %}
 </table>
 
 <p class="total">💰 Total: R$ {{ "%.2f"|format(total) }}</p>

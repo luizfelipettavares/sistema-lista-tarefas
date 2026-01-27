@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import sqlite3
 
 app = Flask(__name__)
+app.secret_key = 'chave-simples'
 
 DATABASE = 'tarefas.db'
 
@@ -17,12 +18,23 @@ def get_db_connection():
 
 
 def validar_tarefa(nome, custo, data_limite):
-    if not nome or not custo or not data_limite:
-        return False
+    if not nome.strip():
+        return "O nome da tarefa é obrigatório."
+
+    if not custo:
+        return "O custo é obrigatório."
+
     try:
-        return float(custo) >= 0
+        custo = float(custo)
+        if custo < 0:
+            return "O custo não pode ser negativo."
     except ValueError:
-        return False
+        return "O custo deve ser um número válido."
+
+    if not data_limite:
+        return "A data limite é obrigatória."
+
+    return None
 
 
 @app.route('/')
@@ -45,15 +57,26 @@ def index():
 
 @app.route('/incluir', methods=['POST'])
 def incluir():
-    nome = request.form['nome'].strip()
+    nome = request.form['nome']
     custo = request.form['custo']
     data_limite = request.form['data_limite']
 
-    if not validar_tarefa(nome, custo, data_limite):
+    erro = validar_tarefa(nome, custo, data_limite)
+    if erro:
+        flash(erro)
         return redirect(url_for('index'))
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
+
+        existe = cursor.execute(
+            'SELECT id FROM tarefas WHERE nome = ?',
+            (nome.strip(),)
+        ).fetchone()
+
+        if existe:
+            flash("Já existe uma tarefa com esse nome.")
+            return redirect(url_for('index'))
 
         max_ordem = cursor.execute(
             'SELECT MAX(ordem) FROM tarefas'
@@ -61,17 +84,14 @@ def incluir():
 
         nova_ordem = (max_ordem or 0) + 1
 
-        try:
-            cursor.execute(
-                '''
-                INSERT INTO tarefas (nome, custo, data_limite, ordem)
-                VALUES (?, ?, ?, ?)
-                ''',
-                (nome, float(custo), data_limite, nova_ordem)
-            )
-            conn.commit()
-        except sqlite3.IntegrityError:
-            pass
+        cursor.execute(
+            '''
+            INSERT INTO tarefas (nome, custo, data_limite, ordem)
+            VALUES (?, ?, ?, ?)
+            ''',
+            (nome.strip(), float(custo), data_limite, nova_ordem)
+        )
+        conn.commit()
 
     return redirect(url_for('index'))
 
@@ -101,11 +121,13 @@ def editar(id):
 
 @app.route('/atualizar/<int:id>', methods=['POST'])
 def atualizar(id):
-    nome = request.form['nome'].strip()
+    nome = request.form['nome']
     custo = request.form['custo']
     data_limite = request.form['data_limite']
 
-    if not validar_tarefa(nome, custo, data_limite):
+    erro = validar_tarefa(nome, custo, data_limite)
+    if erro:
+        flash(erro)
         return redirect(url_for('editar', id=id))
 
     with get_db_connection() as conn:
@@ -113,10 +135,11 @@ def atualizar(id):
 
         existe = cursor.execute(
             'SELECT id FROM tarefas WHERE nome = ? AND id != ?',
-            (nome, id)
+            (nome.strip(), id)
         ).fetchone()
 
         if existe:
+            flash("Já existe uma tarefa com esse nome.")
             return redirect(url_for('editar', id=id))
 
         cursor.execute(
@@ -125,7 +148,7 @@ def atualizar(id):
             SET nome = ?, custo = ?, data_limite = ?
             WHERE id = ?
             ''',
-            (nome, float(custo), data_limite, id)
+            (nome.strip(), float(custo), data_limite, id)
         )
         conn.commit()
 

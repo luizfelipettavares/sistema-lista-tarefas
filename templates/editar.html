@@ -3,33 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <title>Editar Tarefa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+        }
+        .container {
+            width: 500px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 8px;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .acoes {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .mensagem {
+            color: red;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        a {
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Editar Tarefa</h1>
+
+<div class="container">
+    <h1>✏️ Editar Tarefa</h1>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="mensagem">
+          {% for msg in messages %}
+            <p>{{ msg }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
     <form action="{{ url_for('atualizar', id=tarefa.id) }}" method="post">
         <label>
             Nome da tarefa:
-            <input type="text" name="nome" value="{{ tarefa.nome }}" required>
+            <input type="text" name="nome" value="{{ tarefa.nome }}">
         </label>
-        <br><br>
 
         <label>
             Custo (R$):
-            <input type="number" name="custo" step="0.01" min="0"
-                   value="{{ tarefa.custo }}" required>
+            <input type="number" name="custo" step="0.01" value="{{ tarefa.custo }}">
         </label>
-        <br><br>
 
         <label>
             Data limite:
-            <input type="date" name="data_limite"
-                   value="{{ tarefa.data_limite }}" required>
+            <input type="date" name="data_limite" value="{{ tarefa.data_limite }}">
         </label>
-        <br><br>
 
-        <button type="submit">Salvar</button>
-        <a href="{{ url_for('index') }}">Cancelar</a>
+        <div class="acoes">
+            <button type="submit">Salvar</button>
+            <a href="{{ url_for('index') }}">Cancelar</a>
+        </div>
     </form>
+</div>
+
 </body>
 </html>
