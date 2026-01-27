@@ -19,3 +19,6 @@ Sistema web desenvolvido em Python com Flask para cadastro e gerenciamento de ta
 ## Execução local
 ```bash
 python app.py
+
+## Execução online
+https://sistema-lista-tarefas-1xfc.onrender.com
