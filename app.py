@@ -5,6 +5,7 @@ app = Flask(__name__)
 app.secret_key = 'chave-simples'
 
 DATABASE = 'tarefas.db'
+VALOR_MAXIMO = 999_999_999.99
 
 
 def get_db_connection():
@@ -26,8 +27,13 @@ def validar_tarefa(nome, custo, data_limite):
 
     try:
         custo = float(custo)
+
         if custo < 0:
             return "O custo não pode ser negativo."
+
+        if custo > VALOR_MAXIMO:
+            return "O custo máximo permitido é R$ 999.999.999,99."
+
     except ValueError:
         return "O custo deve ser um número válido."
 
