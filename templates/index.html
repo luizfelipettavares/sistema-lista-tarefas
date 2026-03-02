@@ -61,7 +61,7 @@
 {% endwith %}
 
 <form action="{{ url_for('incluir') }}" method="post">
-    <input type="text" name="nome" placeholder="Tarefa">
+    <input type="text" name="nome" placeholder="Tarefa" autofocus>
     <input type="number" step="0.01" name="custo" placeholder="Custo">
     <input type="date" name="data_limite">
     <button type="submit">Adicionar</button>
