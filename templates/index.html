@@ -69,6 +69,7 @@
 
 <table>
     <tr>
+        <th>ID</th>
         <th>Nome</th>
         <th>Custo</th>
         <th>Data Limite</th>
@@ -78,6 +79,7 @@
     {% if tarefas %}
         {% for tarefa in tarefas %}
         <tr {% if tarefa.custo >= 1000 %} style="background-color: #ffde21;" {% endif %}>
+            <td>{{ tarefa.id }}</td>
             <td>{{ tarefa.nome }}</td>
             <td>R$ {{ "%.2f"|format(tarefa.custo) }}</td>
             <td>{{ tarefa.data_limite[8:10] }}/{{ tarefa.data_limite[5:7] }}/{{ tarefa.data_limite[0:4] }}</td>
