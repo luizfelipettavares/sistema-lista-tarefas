@@ -59,7 +59,7 @@
     <form action="{{ url_for('atualizar', id=tarefa.id) }}" method="post">
         <label>
             Nome da tarefa:
-            <input type="text" name="nome" value="{{ tarefa.nome }}">
+            <input type="text" name="nome" value="{{ tarefa.nome }}" autofocus>
         </label>
 
         <label>
