@@ -59,7 +59,7 @@
     <form action="{{ url_for('atualizar', id=tarefa.id) }}" method="post">
         <label>
             Nome da tarefa:
-            <input type="text" name="nome" value="{{ tarefa.nome }}" autofocus>
+            <input type="text" name="nome" value="{{ tarefa.nome }}">
         </label>
 
         <label>
@@ -78,6 +78,16 @@
         </div>
     </form>
 </div>
+
+<script>
+    window.addEventListener("load", function () {
+        const campoNome = document.querySelector('input[name="nome"]');
+        if (campoNome) {
+            campoNome.focus();
+            campoNome.select();
+        }
+    });
+</script>
 
 </body>
 </html>
